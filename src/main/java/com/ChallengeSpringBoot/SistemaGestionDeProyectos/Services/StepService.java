@@ -11,6 +11,7 @@ import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Enums.StatusTask;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Step;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Task;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.StepRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -18,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 public class StepService {
 
     private final StepRepository stepRepository;
-    private final TaskService taskService;
+    private final TaskRepository taskRepository;
 
     /// Mostrar todos los pasos de una tarea
     public List<StepResponseDTO> getAllStepsByTask(Integer idTask) {
@@ -27,7 +28,8 @@ public class StepService {
         }
 
         // Verificamos que la tarea exista y esté activa
-        taskService.getTaskById(idTask);
+        taskRepository.findByIdTaskAndActiveTrue(idTask)
+                .orElseThrow(() -> new RuntimeException("Tarea no encontrada con id: " + idTask));
 
         return stepRepository.findByTaskIdTaskAndActiveTrue(idTask).stream()
                 .map(this::mapToResponseDTO)
@@ -46,7 +48,8 @@ public class StepService {
             throw new RuntimeException("El ID del usuario es obligatorio.");
         }
 
-        Task task = taskService.getTaskById(stepRequestDTO.getIdTask());
+        Task task = taskRepository.findByIdTaskAndActiveTrue(stepRequestDTO.getIdTask())
+                .orElseThrow(() -> new RuntimeException("Tarea no encontrada con id: " + stepRequestDTO.getIdTask()));
 
         // 1. Validar que quien crea el paso sea el usuario asignado, el creador de la tarea o el dueño del proyecto
         boolean isOwner = task.getProject().getOwner().getIdUser().equals(stepRequestDTO.getIdUser());

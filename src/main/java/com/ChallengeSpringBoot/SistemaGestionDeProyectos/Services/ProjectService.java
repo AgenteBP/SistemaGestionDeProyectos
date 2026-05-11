@@ -6,6 +6,7 @@ import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.ProjectDTO.ProjectR
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.ProjectDTO.ProjectResponseDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserResponseDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Project;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.ProjectUser;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Task;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Step;
@@ -14,6 +15,8 @@ import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectRepos
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.TaskRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.StepRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.CommentRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectUserRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,8 +28,8 @@ public class ProjectService {
     private final TaskRepository taskRepository;
     private final StepRepository stepRepository;
     private final CommentRepository commentRepository;
-    private final ProjectUserService projectUserService;
-    private final UserService userService;
+    private final ProjectUserRepository projectUserRepository;
+    private final UserRepository userRepository;
 
     public List<ProjectResponseDTO> getAllProjects() {
         return projectRepository.findAll().stream()
@@ -98,7 +101,8 @@ public class ProjectService {
         }
 
         // 2. Control del Propietario (Owner)
-        User owner = userService.findUserById(projectDto.getIdOwner());
+        User owner = userRepository.findByIdAndActiveTrue(projectDto.getIdOwner())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + projectDto.getIdOwner()));
         if (!owner.getActive()) {
             throw new RuntimeException("El propietario seleccionado no se encuentra activo.");
         }
@@ -113,7 +117,7 @@ public class ProjectService {
 
         // 4. Control y asignación de usuarios
         if (projectDto.getUserAssigned() != null && !projectDto.getUserAssigned().isEmpty()) {
-            projectUserService.saveAllProjectUsers(savedProject.getIdProject(), projectDto.getUserAssigned());
+            saveAssignedUsers(savedProject, projectDto.getUserAssigned());
         }
         return convertToResponseDTO(savedProject);
     }
@@ -145,7 +149,7 @@ public class ProjectService {
         UserResponseDTO ownerDTO = convertToUserResponseDTO(project.getOwner());
 
         // Obtengo los usuarios asignados con ProjectUserService
-        List<UserResponseDTO> assignedUsersDTO = projectUserService.getProjectUsersByProject(project.getIdProject())
+        List<UserResponseDTO> assignedUsersDTO = projectUserRepository.findByProject(project)
                 .stream()
                 .map(projectUser -> convertToUserResponseDTO(projectUser.getUser()))
                 .toList();
@@ -169,5 +173,22 @@ public class ProjectService {
 
     public boolean hasActiveProjectsAsOwner(User user) {
         return projectRepository.existsByOwnerAndActiveTrue(user);
+    }
+
+    private void saveAssignedUsers(Project project, List<Integer> idUsers) {
+        List<ProjectUser> projectUsers = idUsers.stream()
+                .map(idUser -> {
+                    User user = userRepository.findByIdAndActiveTrue(idUser)
+                            .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + idUser));
+
+                    ProjectUser projectUser = new ProjectUser();
+                    projectUser.setProject(project);
+                    projectUser.setUser(user);
+                    projectUser.setActive(true);
+                    return projectUser;
+                })
+                .toList();
+
+        projectUserRepository.saveAll(projectUsers);
     }
 }

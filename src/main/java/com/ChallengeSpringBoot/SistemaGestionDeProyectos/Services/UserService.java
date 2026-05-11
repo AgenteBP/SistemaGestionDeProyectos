@@ -6,18 +6,18 @@ import org.springframework.stereotype.Service;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRequestDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserResponseDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.TaskRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
-    private final ProjectService projectService;
-    private final TaskService taskService;
+    private final ProjectRepository projectRepository;
+    private final TaskRepository taskRepository;
 
     /// Creacion de usuario
     public UserResponseDTO createUser(UserRequestDTO dto) {
@@ -108,12 +108,12 @@ public class UserService {
     public void deleteUser(Integer idUser) {
         User user = findUserById(idUser);
 
-        if (projectService.hasActiveProjectsAsOwner(user)) {
+        if (projectRepository.existsByOwnerAndActiveTrue(user)) {
             throw new RuntimeException(
                     "El usuario no se puede eliminar porque es propietario de un proyecto activo. Por favor, reasigne la propiedad del proyecto primero.");
         }
 
-        if (taskService.hasActiveTasksAssigned(user)) {
+        if (taskRepository.existsByAssignedUserAndActiveTrue(user)) {
             throw new RuntimeException(
                     "El usuario no se puede eliminar porque tiene tareas activas asignadas. Por favor, reasigne las tareas primero.");
         }

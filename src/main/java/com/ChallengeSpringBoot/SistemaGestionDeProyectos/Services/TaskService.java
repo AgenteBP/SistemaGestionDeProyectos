@@ -14,8 +14,11 @@ import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Project;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Step;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Task;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectUserRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.StepRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.TaskRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.UserRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +27,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TaskService {
     private final TaskRepository taskRepository;
-    private final ProjectService projectService;
-    private final ProjectUserService projectUserService;
-    private final UserService userService;
+    private final ProjectRepository projectRepository;
+    private final ProjectUserRepository projectUserRepository;
+    private final UserRepository userRepository;
     private final StepRepository stepRepository;
 
     public TaskResponseDTO findTaskById(Integer idTask) {
@@ -53,10 +56,12 @@ public class TaskService {
     public TaskResponseDTO saveTask(TaskRequestDTO taskRequestDTO) {
         validateTaskRequest(taskRequestDTO);
 
-        Project project = projectService.findProjectById(taskRequestDTO.getIdProject());
+        Project project = projectRepository.findByIdProjectAndActiveTrue(taskRequestDTO.getIdProject())
+                .orElseThrow(() -> new RuntimeException(
+                        "Proyecto no encontrado con id: " + taskRequestDTO.getIdProject()));
 
-        User createdBy = userService.findUserById(taskRequestDTO.getIdCreatedBy());
-        User assignedUser = userService.findUserById(taskRequestDTO.getIdAssignedUser());
+        User createdBy = findActiveUserById(taskRequestDTO.getIdCreatedBy());
+        User assignedUser = findActiveUserById(taskRequestDTO.getIdAssignedUser());
 
         validateUserBelongsToProject(project, createdBy, "creador");
         validateUserBelongsToProject(project, assignedUser, "asignado");
@@ -181,8 +186,8 @@ public class TaskService {
 
     private void validateUserBelongsToProject(Project project, User user, String role) {
         boolean isOwner = project.getOwner() != null && project.getOwner().getIdUser().equals(user.getIdUser());
-        boolean isAssignedToProject = projectUserService.existsByProjectAndUser(project.getIdProject(),
-                user.getIdUser());
+        boolean isAssignedToProject = projectUserRepository
+                .existsByProjectIdProjectAndUserIdUserAndActiveTrue(project.getIdProject(), user.getIdUser());
 
         if (!isOwner && !isAssignedToProject) {
             throw new RuntimeException("El usuario " + role + " debe pertenecer al proyecto.");
@@ -201,17 +206,9 @@ public class TaskService {
         }
     }
 
-    // // 1. UserService ↔ TaskService
-    // UserService inyecta TaskService (para verificar tareas activas al eliminar un
-    // usuario).
-    // TaskService inyecta UserService (para buscar usuarios al gestionar tareas).
-    // 2. UserService ↔ ProjectService
-    // UserService inyecta ProjectService (para verificar proyectos activos al
-    // eliminar un usuario).
-    // ProjectService inyecta UserService (para validar el propietario al crear un
-    // proyecto).
-    // 3. Ciclo Triple: TaskService → ProjectService → UserService → TaskService
-    // TaskService depende de ProjectService.
-    // ProjectService depende de UserService.
-    // UserService depende de TaskService.
+    private User findActiveUserById(Integer idUser) {
+        return userRepository.findByIdAndActiveTrue(idUser)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + idUser));
+    }
+
 }

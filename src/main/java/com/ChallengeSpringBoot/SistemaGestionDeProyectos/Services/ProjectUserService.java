@@ -11,6 +11,7 @@ import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.ProjectUser;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectUserRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -19,7 +20,7 @@ public class ProjectUserService {
 
     private final ProjectUserRepository projectUserRepository;
     private final ProjectRepository projectRepository;
-    private final UserService userService;
+    private final UserRepository userRepository;
 
     public List<ProjectUser> getProjectUsersByProject(Integer idProject) {
         Project project = getProjectById(idProject);
@@ -27,19 +28,17 @@ public class ProjectUserService {
     }
 
     public List<ProjectUser> getProjectUsersByUser(Integer idUser) {
-        User user = userService.findUserById(idUser);
+        User user = getUserById(idUser);
         return projectUserRepository.findByUser(user);
     }
 
     public boolean existsByProjectAndUser(Integer idProject, Integer idUser) {
-        Project project = getProjectById(idProject);
-        User user = userService.findUserById(idUser);
-        return projectUserRepository.existsByProjectAndUser(project, user);
+        return projectUserRepository.existsByProjectIdProjectAndUserIdUserAndActiveTrue(idProject, idUser);
     }
 
     public ProjectUserResponseDTO saveProjectUser(Integer idProject, Integer idUser) {
         Project project = getProjectById(idProject);
-        User user = userService.findUserById(idUser);
+        User user = getUserById(idUser);
         validateActiveUser(user, idUser);
 
         ProjectUser projectUser = new ProjectUser();
@@ -53,7 +52,7 @@ public class ProjectUserService {
     public ProjectUserResponseDTO saveAllProjectUsers(Integer idProject, List<Integer> idUsers) {
         Project project = getProjectById(idProject);
         List<User> users = idUsers.stream()
-                .map(userService::findUserById)
+                .map(this::getUserById)
                 .toList();
         users.forEach(user -> validateActiveUser(user, user.getIdUser()));
 
@@ -109,6 +108,11 @@ public class ProjectUserService {
     private Project getProjectById(Integer idProject) {
         return projectRepository.findById(idProject)
                 .orElseThrow(() -> new RuntimeException("Proyecto no encontrado con id: " + idProject));
+    }
+
+    private User getUserById(Integer idUser) {
+        return userRepository.findByIdAndActiveTrue(idUser)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + idUser));
     }
 
     private void validateActiveUser(User user, Integer idUser) {
