@@ -2,7 +2,9 @@ package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Controller;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.ProjectDTO.ProjectRequestDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.ProjectDTO.ProjectResponseDTO;
-import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services.ProjectService;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.ProjectDTO.ProjectResponseWithTaskDTO;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Enums.StatusTask;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services.IProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProjectController {
 
-    private final ProjectService projectService;
+    private final IProjectService projectService;
 
     // ==========================
     // --- OBTENER PROYECTOS ---
@@ -30,6 +32,15 @@ public class ProjectController {
     public ResponseEntity<ProjectResponseDTO> getProjectById(@PathVariable Integer id) {
         ProjectResponseDTO projectDTO = projectService.getProjectById(id);
         return ResponseEntity.ok(projectDTO);
+    }
+
+    @GetMapping("/{id}/tasks")
+    public ResponseEntity<ProjectResponseWithTaskDTO> getProjectWithTasks(
+            @PathVariable Integer id,
+            @RequestParam(required = false) String nameTask,
+            @RequestParam(required = false) StatusTask statusTask) {
+        ProjectResponseWithTaskDTO projectWithTasks = projectService.getProjectByIdWithTask(id, nameTask, statusTask);
+        return ResponseEntity.ok(projectWithTasks);
     }
 
     // ==========================
@@ -49,8 +60,7 @@ public class ProjectController {
     public ResponseEntity<ProjectResponseDTO> updateProject(@PathVariable Integer id,
             @RequestBody ProjectRequestDTO projectRequestDTO) {
 
-        projectRequestDTO.setIdProject(id);
-        ProjectResponseDTO updatedProject = projectService.updateProject(projectRequestDTO);
+        ProjectResponseDTO updatedProject = projectService.updateProject(id, projectRequestDTO);
         return ResponseEntity.ok(updatedProject);
     }
 
@@ -58,10 +68,9 @@ public class ProjectController {
     // --- BORRAR PROYECTO ---
     // ==========================
 
-    // @DeleteMapping("/{id}")
-    // public ResponseEntity<String> deleteProject(@PathVariable Integer id) {
-    // String response = projectService.deleteProject(id);
-    // return ResponseEntity.ok(response); // Returning OK because it returns a
-    // string message
-    // }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteProject(@PathVariable Integer id, @RequestParam Integer idUser) {
+        String response = projectService.deleteProject(id, idUser);
+        return ResponseEntity.ok(response);
+    }
 }

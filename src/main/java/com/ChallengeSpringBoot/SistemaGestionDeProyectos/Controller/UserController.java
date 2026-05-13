@@ -7,8 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRequestDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserResponseDTO;
-import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
-import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services.UserService;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services.IUserService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -16,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserService userService;
+    private final IUserService userService;
 
     // ==========================
     // --- OBTENER USUARIOS ---
@@ -54,7 +53,7 @@ public class UserController {
     // --- CREAR USUARIO ---
     // ==========================
 
-    @PostMapping
+    @PostMapping("/save")
     public ResponseEntity<UserResponseDTO> createUser(@RequestBody UserRequestDTO userRequestDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(userRequestDTO));
     }

@@ -1,37 +1,40 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services;
 
-import java.util.Date;
 import java.util.List;
-
+import java.time.format.DateTimeFormatter;
 import org.springframework.stereotype.Service;
-
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestDTO;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestNextStatusDTO;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestUpdateDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskResponseDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserResponseDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Enums.StatusStep;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Enums.StatusTask;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Comment;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Project;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Step;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Task;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.CommentRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectUserRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.StepRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.TaskRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.UserRepository;
-
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class TaskService {
+public class TaskService implements ITaskService {
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
     private final UserRepository userRepository;
     private final StepRepository stepRepository;
+    private final CommentRepository commentRepository;
 
+    @Override
     public TaskResponseDTO findTaskById(Integer idTask) {
         Task task = taskRepository.findByIdTaskAndActiveTrue(idTask)
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada con id: " + idTask));
@@ -43,18 +46,10 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada con id: " + idTask));
     }
 
-    /// revisar
-    // public java.util.List<TaskResponseDTO> getTasksByProjectId(Integer idProject)
-    /// {
-    // return taskRepository.findByProjectIdProject(idProject).stream()
-    // .map(this::mapToResponseDTO)
-    // .toList();
-    // }
-
-    /// Creacion de tarea
     @Transactional
+    @Override
     public TaskResponseDTO saveTask(TaskRequestDTO taskRequestDTO) {
-        validateTaskRequest(taskRequestDTO);
+        validateTaskCreateRequest(taskRequestDTO);
 
         Project project = projectRepository.findByIdProjectAndActiveTrue(taskRequestDTO.getIdProject())
                 .orElseThrow(() -> new RuntimeException(
@@ -65,6 +60,7 @@ public class TaskService {
 
         validateUserBelongsToProject(project, createdBy, "creador");
         validateUserBelongsToProject(project, assignedUser, "asignado");
+        validateDifferentUsers(createdBy, assignedUser);
 
         Task task = new Task();
         task.setNameTask(taskRequestDTO.getNameTask());
@@ -79,21 +75,28 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponseDTO nextStatusTask(Integer idTask) {
-        return nextStatusTask(idTask, new Date());
-    }
+    @Override
+    public TaskResponseDTO nextStatusTask(TaskRequestNextStatusDTO taskrequestNextStatusDTO) {
+        Integer idTask = taskrequestNextStatusDTO.getIdTask();
+        Integer idUser = taskrequestNextStatusDTO.getIdUser();
 
-    @Transactional
-    public TaskResponseDTO nextStatusTask(Integer idTask, Date statusDate) {
         if (idTask == null) {
             throw new RuntimeException("El ID de la tarea es obligatorio.");
         }
 
-        if (statusDate == null) {
-            throw new RuntimeException("La fecha de cambio de estado es obligatoria.");
+        Task task = getTaskById(idTask);
+
+        if (idUser == null) {
+            throw new RuntimeException("El ID del usuario es obligatorio.");
         }
 
-        Task task = getTaskById(idTask);
+        // Validar que el usuario sea el creador o el asignado
+        boolean isCreator = task.getCreatedBy() != null && task.getCreatedBy().getIdUser().equals(idUser);
+        boolean isAssigned = task.getAssignedUser() != null && task.getAssignedUser().getIdUser().equals(idUser);
+
+        if (!isCreator && !isAssigned) {
+            throw new RuntimeException("El usuario no tiene permisos para cambiar el estado de esta tarea.");
+        }
 
         if (!task.getActive()) {
             throw new RuntimeException("No se puede modificar una tarea inactiva.");
@@ -110,13 +113,28 @@ public class TaskService {
         switch (task.getStatusTask()) {
             case PENDIENTE:
                 task.setStatusTask(StatusTask.INICIADA);
-                task.setStartDate(statusDate);
+                if (taskrequestNextStatusDTO.getDateTask() != null) {
+                    task.setStartDate(taskrequestNextStatusDTO.getDateTask());
+                } else {
+                    throw new RuntimeException("La fecha de inicio es obligatoria.");
+                }
                 break;
 
             case INICIADA:
                 validateTaskCanBeCompleted(task);
                 task.setStatusTask(StatusTask.COMPLETADA);
-                task.setEndDate(statusDate);
+                if (taskrequestNextStatusDTO.getDateTask() != null) {
+                    if (taskrequestNextStatusDTO.getDateTask().isBefore(task.getStartDate())) {
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                        String startDateStr = task.getStartDate().format(formatter);
+                        throw new RuntimeException(
+                                "La fecha de finalización no puede ser anterior a la fecha de inicio ("
+                                        + startDateStr + ").");
+                    }
+                    task.setEndDate(taskrequestNextStatusDTO.getDateTask());
+                } else {
+                    throw new RuntimeException("La fecha de fin es obligatoria.");
+                }
                 break;
 
             case COMPLETADA:
@@ -127,6 +145,69 @@ public class TaskService {
         }
 
         return mapToResponseDTO(taskRepository.save(task));
+    }
+
+    @Transactional
+    @Override
+    public TaskResponseDTO updateTask(TaskRequestUpdateDTO taskRequestUpdateDTO) {
+        Integer idTask = taskRequestUpdateDTO.getIdTask();
+        Integer idUser = taskRequestUpdateDTO.getIdUser();
+
+        if (idUser == null) {
+            throw new RuntimeException("El ID del usuario es obligatorio para realizar la actualización.");
+        }
+
+        Task task = getTaskById(idTask);
+
+        // Solo el creador de la tarea puede modificarla
+        if (!task.getCreatedBy().getIdUser().equals(idUser)) {
+            throw new RuntimeException("Solo el creador de la tarea tiene permisos para modificar sus datos.");
+        }
+
+        if (!task.getActive()) {
+            throw new RuntimeException("No se puede modificar una tarea inactiva.");
+        }
+
+        if (task.getProject() == null || !task.getProject().getActive()) {
+            throw new RuntimeException("No se puede modificar una tarea de un proyecto inactivo.");
+        }
+
+        // Actualizar datos básicos
+        if (taskRequestUpdateDTO.getNameTask() != null && !taskRequestUpdateDTO.getNameTask().trim().isEmpty()) {
+            task.setNameTask(taskRequestUpdateDTO.getNameTask());
+        }
+        task.setDescription(taskRequestUpdateDTO.getDescription());
+
+        return mapToResponseDTO(taskRepository.save(task));
+    }
+
+    @Transactional
+    @Override
+    public void deleteTask(Integer idTask) {
+        Task task = taskRepository.findById(idTask)
+                .orElseThrow(() -> new RuntimeException("Tarea no encontrada con id: " + idTask));
+
+        if (!task.getActive()) {
+            throw new RuntimeException("La tarea ya se encuentra inactiva.");
+        }
+
+        // Baja lógica de la tarea
+        task.setActive(false);
+        taskRepository.save(task);
+
+        // Baja lógica de los steps relacionados
+        List<Step> steps = stepRepository.findByTaskIdTaskAndActiveTrue(idTask);
+        steps.forEach(step -> {
+            step.setActive(false);
+            stepRepository.save(step);
+        });
+
+        // Baja lógica de las comunicaciones (comentarios) asociadas
+        List<Comment> comments = commentRepository.findByTaskIdTaskAndActiveTrue(idTask);
+        comments.forEach(comment -> {
+            comment.setActive(false);
+            commentRepository.save(comment);
+        });
     }
 
     /// Funciones auxiliares
@@ -158,18 +239,18 @@ public class TaskService {
                 createdBy,
                 assignedUser,
                 task.getProject().getIdProject(),
-                task.getProject().getNameProject());
+                task.getProject().getNameProject(),
+                task.getActive());
     }
 
+    @Override
     public boolean hasActiveTasksAssigned(User user) {
         return taskRepository.existsByAssignedUserAndActiveTrue(user);
     }
 
     /// validador de request
-    private void validateTaskRequest(TaskRequestDTO taskRequestDTO) {
-        if (taskRequestDTO.getNameTask() == null || taskRequestDTO.getNameTask().trim().isEmpty()) {
-            throw new RuntimeException("El nombre de la tarea es obligatorio.");
-        }
+    private void validateTaskCreateRequest(TaskRequestDTO taskRequestDTO) {
+        validateTaskUpdateRequest(taskRequestDTO);
 
         if (taskRequestDTO.getIdProject() == null) {
             throw new RuntimeException("El ID del proyecto es obligatorio.");
@@ -181,6 +262,23 @@ public class TaskService {
 
         if (taskRequestDTO.getIdAssignedUser() == null) {
             throw new RuntimeException("El ID del usuario asignado es obligatorio.");
+        }
+
+        if (taskRequestDTO.getNameTask() == null || taskRequestDTO.getNameTask().trim().isEmpty()) {
+            throw new RuntimeException("El nombre de la tarea es obligatorio.");
+        }
+
+    }
+
+    private void validateTaskUpdateRequest(TaskRequestDTO taskRequestDTO) {
+        if (taskRequestDTO.getNameTask() == null || taskRequestDTO.getNameTask().trim().isEmpty()) {
+            throw new RuntimeException("El nombre de la tarea es obligatorio.");
+        }
+    }
+
+    private void validateDifferentUsers(User createdBy, User assignedUser) {
+        if (createdBy.getIdUser().equals(assignedUser.getIdUser())) {
+            throw new RuntimeException("El usuario creador y el usuario asignado no pueden ser el mismo.");
         }
     }
 
@@ -207,7 +305,7 @@ public class TaskService {
     }
 
     private User findActiveUserById(Integer idUser) {
-        return userRepository.findByIdAndActiveTrue(idUser)
+        return userRepository.findByIdUserAndActiveTrue(idUser)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + idUser));
     }
 

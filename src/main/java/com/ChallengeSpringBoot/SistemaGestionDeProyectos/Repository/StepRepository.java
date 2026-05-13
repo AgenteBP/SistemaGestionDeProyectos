@@ -10,4 +10,6 @@ import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Step;
 public interface StepRepository extends JpaRepository<Step, Integer> {
 
     List<Step> findByTaskIdTaskAndActiveTrue(Integer idTask);
+
+    List<Step> findByTaskProjectIdProjectAndActiveTrue(Integer idProject);
 }

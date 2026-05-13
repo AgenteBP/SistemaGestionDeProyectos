@@ -5,13 +5,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class TaskRequestDTO {
-
+@NoArgsConstructor
+public class TaskRequestUpdateDTO {
+    private Integer idTask;
     private String nameTask;
     private String description;
-    private Integer idProject;
-    private Integer idCreatedBy;
-    private Integer idAssignedUser;
+    private Integer idUser;
 }

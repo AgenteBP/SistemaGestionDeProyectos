@@ -16,12 +16,13 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class StepService {
+public class StepService implements IStepService {
 
     private final StepRepository stepRepository;
     private final TaskRepository taskRepository;
 
     /// Mostrar todos los pasos de una tarea
+    @Override
     public List<StepResponseDTO> getAllStepsByTask(Integer idTask) {
         if (idTask == null) {
             throw new RuntimeException("El ID de la tarea es obligatorio.");
@@ -37,6 +38,7 @@ public class StepService {
     }
 
     /// Guardar un paso
+    @Override
     public StepResponseDTO saveStep(StepRequestDTO stepRequestDTO) {
         if (stepRequestDTO.getNameStep() == null || stepRequestDTO.getNameStep().trim().isEmpty()) {
             throw new RuntimeException("El nombre del paso es obligatorio.");
@@ -51,10 +53,13 @@ public class StepService {
         Task task = taskRepository.findByIdTaskAndActiveTrue(stepRequestDTO.getIdTask())
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada con id: " + stepRequestDTO.getIdTask()));
 
-        // 1. Validar que quien crea el paso sea el usuario asignado, el creador de la tarea o el dueño del proyecto
+        // 1. Validar que quien crea el paso sea el usuario asignado, el creador de la
+        // tarea o el dueño del proyecto
         boolean isOwner = task.getProject().getOwner().getIdUser().equals(stepRequestDTO.getIdUser());
-        boolean isCreatedBy = task.getCreatedBy() != null && task.getCreatedBy().getIdUser().equals(stepRequestDTO.getIdUser());
-        boolean isAssignedUser = task.getAssignedUser() != null && task.getAssignedUser().getIdUser().equals(stepRequestDTO.getIdUser());
+        boolean isCreatedBy = task.getCreatedBy() != null
+                && task.getCreatedBy().getIdUser().equals(stepRequestDTO.getIdUser());
+        boolean isAssignedUser = task.getAssignedUser() != null
+                && task.getAssignedUser().getIdUser().equals(stepRequestDTO.getIdUser());
 
         if (!isOwner && !isCreatedBy && !isAssignedUser) {
             throw new RuntimeException("El usuario no tiene permisos para agregar pasos a esta tarea.");
@@ -88,7 +93,17 @@ public class StepService {
     // return mapToResponseDTO(stepRepository.save(step));
     // }
 
+    /// Actualizar el paso
+    @Override
     public StepResponseDTO nextStatusStep(Integer idStep, Integer idUser) {
+
+        if (idStep == null) {
+            throw new RuntimeException("El ID del paso es obligatorio.");
+        }
+        if (idUser == null) {
+            throw new RuntimeException("El ID del usuario es obligatorio.");
+        }
+
         Step step = stepRepository.findById(idStep)
                 .orElseThrow(() -> new RuntimeException("Paso no encontrado con id: " + idStep));
 
@@ -102,10 +117,13 @@ public class StepService {
             throw new RuntimeException("No se puede modificar un paso de una tarea completada.");
         }
 
-        // 3. Validar que quien realiza la acción sea el usuario asignado, el creador de la tarea o el dueño del proyecto
+        // 3. Validar que quien realiza la acción sea el usuario asignado, el creador de
+        // la tarea o el dueño del proyecto
         boolean isOwner = step.getTask().getProject().getOwner().getIdUser().equals(idUser);
-        boolean isCreatedBy = step.getTask().getCreatedBy() != null && step.getTask().getCreatedBy().getIdUser().equals(idUser);
-        boolean isAssignedUser = step.getTask().getAssignedUser() != null && step.getTask().getAssignedUser().getIdUser().equals(idUser);
+        boolean isCreatedBy = step.getTask().getCreatedBy() != null
+                && step.getTask().getCreatedBy().getIdUser().equals(idUser);
+        boolean isAssignedUser = step.getTask().getAssignedUser() != null
+                && step.getTask().getAssignedUser().getIdUser().equals(idUser);
 
         if (!isOwner && !isCreatedBy && !isAssignedUser) {
             throw new RuntimeException("El usuario no tiene permisos para modificar pasos de esta tarea.");
@@ -113,9 +131,19 @@ public class StepService {
 
         switch (step.getStatusStep()) {
             case PENDIENTE:
+                // Validar que la tarea esté en estado INICIADA
+                if (step.getTask().getStatusTask() != StatusTask.INICIADA) {
+                    throw new RuntimeException(
+                            "La tarea no está en estado INICIADA, para comenzar este paso la tarea debe estar en estado INICIADA.");
+                }
                 step.setStatusStep(StatusStep.INICIADO);
                 break;
             case INICIADO:
+                // Validar que la tarea esté en estado INICIADA
+                if (step.getTask().getStatusTask() != StatusTask.INICIADA) {
+                    throw new RuntimeException(
+                            "La tarea debe estar en estado INICIADA para finalizar este paso.");
+                }
                 step.setStatusStep(StatusStep.FINALIZADO);
                 break;
             case FINALIZADO:
@@ -127,7 +155,14 @@ public class StepService {
         return mapToResponseDTO(stepRepository.save(step));
     }
 
+    // Eliminar un paso
+    @Override
     public void deleteStep(Integer idStep) {
+
+        if (idStep == null) {
+            throw new RuntimeException("El ID del paso es obligatorio.");
+        }
+
         Step step = stepRepository.findById(idStep)
                 .orElseThrow(() -> new RuntimeException("Paso no encontrado con id: " + idStep));
 
@@ -151,12 +186,33 @@ public class StepService {
     }
 
     /// Actualizar nombre de un paso
+    @Override
     public StepResponseDTO updateNameStep(Integer idStep, String nameStep) {
+        if (idStep == null) {
+            throw new RuntimeException("El ID del paso es obligatorio.");
+        }
+        if (nameStep == null || nameStep.trim().isEmpty()) {
+            throw new RuntimeException("El nombre del paso es obligatorio.");
+        }
+
         Step step = stepRepository.findById(idStep)
                 .orElseThrow(() -> new RuntimeException("Paso no encontrado con id: " + idStep));
+
+        // Validar que la tarea esté activa
+        if (!step.getTask().getActive()) {
+            throw new RuntimeException("No se puede modificar un paso de una tarea inactiva.");
+        }
+
+        // Validar que la tarea no esté completada
+        if (step.getTask().getStatusTask() == StatusTask.COMPLETADA) {
+            throw new RuntimeException("No se puede modificar un paso de una tarea completada.");
+        }
+
         step.setNameStep(nameStep);
         return mapToResponseDTO(stepRepository.save(step));
     }
+
+    /// Funcion auxiliar
 
     private StepResponseDTO mapToResponseDTO(Step step) {
         return new StepResponseDTO(

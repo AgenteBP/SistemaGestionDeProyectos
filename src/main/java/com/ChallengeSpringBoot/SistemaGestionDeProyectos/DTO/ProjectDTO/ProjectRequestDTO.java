@@ -10,7 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProjectRequestDTO {
-    private Integer idProject;
+    // private Integer idProject;
     private String nameProject;
     private String description;
     private Integer idOwner;

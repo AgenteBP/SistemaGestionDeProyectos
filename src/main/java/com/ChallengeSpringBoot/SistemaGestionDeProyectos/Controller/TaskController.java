@@ -1,19 +1,20 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Controller;
 
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestDTO;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestNextStatusDTO;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestUpdateDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskResponseDTO;
-import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services.TaskService;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services.ITaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/tasks")
 @RequiredArgsConstructor
 public class TaskController {
 
-    private final TaskService taskService;
+    private final ITaskService taskService;
 
     // ==========================
     // --- OBTENER TAREAS ---
@@ -25,11 +26,44 @@ public class TaskController {
         return ResponseEntity.ok(taskDTO);
     }
 
-    // @GetMapping("/project/{projectId}")
-    // public ResponseEntity<List<TaskResponseDTO>> getTasksByProject(@PathVariable
-    // Integer projectId) {
-    // List<TaskResponseDTO> tasks = taskService.getTasksByProjectId(projectId);
-    // return ResponseEntity.ok(tasks);
-    // }
+    // ==========================
+    // --- CREAR TAREA ---
+    // ==========================
 
+    @PostMapping
+    public ResponseEntity<TaskResponseDTO> createTask(@RequestBody TaskRequestDTO taskRequestDTO) {
+        TaskResponseDTO createdTask = taskService.saveTask(taskRequestDTO);
+        return ResponseEntity.ok(createdTask);
+    }
+
+    // ==========================
+    // --- ACTUALIZAR TAREA ---
+    // ==========================
+
+    @PutMapping("/update")
+    public ResponseEntity<TaskResponseDTO> updateTask(@RequestBody TaskRequestUpdateDTO taskRequestUpdateDTO) {
+        TaskResponseDTO updatedTask = taskService.updateTask(taskRequestUpdateDTO);
+        return ResponseEntity.ok(updatedTask);
+    }
+
+    // ==========================
+    // --- CAMBIAR ESTADO ---
+    // ==========================
+
+    @PutMapping("/next-status")
+    public ResponseEntity<TaskResponseDTO> nextStatusTask(
+            @RequestBody TaskRequestNextStatusDTO taskrequestNextStatusDTO) {
+        TaskResponseDTO updatedTask = taskService.nextStatusTask(taskrequestNextStatusDTO);
+        return ResponseEntity.ok(updatedTask);
+    }
+
+    // ==========================
+    // --- ELIMINAR TAREA ---
+    // ==========================
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTask(@PathVariable Integer id) {
+        taskService.deleteTask(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -12,6 +12,12 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
 
     List<Task> findByProjectIdProject(Integer idProject);
 
+    List<Task> findByProjectIdProjectAndActiveTrue(Integer idProject);
+
     java.util.Optional<Task> findByIdTaskAndActiveTrue(Integer idTask);
     boolean existsByAssignedUserAndActiveTrue(User user);
+
+    boolean existsByProjectIdProjectAndAssignedUser_IdUserAndActiveTrue(Integer idProject, Integer idUser);
+
+    boolean existsByProjectIdProjectAndCreatedBy_IdUserAndActiveTrue(Integer idProject, Integer idUser);
 }
