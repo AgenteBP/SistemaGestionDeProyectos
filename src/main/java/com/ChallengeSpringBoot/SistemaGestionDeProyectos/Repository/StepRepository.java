@@ -3,6 +3,8 @@ package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 
@@ -23,4 +25,6 @@ public interface StepRepository extends JpaRepository<Step, Integer> {
 
     boolean existsByNameStepIgnoreCaseAndTaskIdTaskAndActiveTrueAndIdStepNot(String nameStep, Integer idTask, Integer idStep);
 
+    @Query("SELECT s.task.idTask, COUNT(s) FROM Step s WHERE s.statusStep != :status AND s.active = true GROUP BY s.task.idTask")
+    List<Object[]> countStepsNotCompletedByTask(@Param("status") StatusStep status);
 }

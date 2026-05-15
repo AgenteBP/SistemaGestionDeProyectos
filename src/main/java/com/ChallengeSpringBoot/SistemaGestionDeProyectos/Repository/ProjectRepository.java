@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Project;
@@ -25,4 +26,7 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
     Integer countByOwnerAndActiveTrue(User user);
 
     List<Project> findByActiveTrue();
+
+    @Query("SELECT p.owner.idUser, COUNT(p) FROM Project p WHERE p.active = true GROUP BY p.owner.idUser")
+    List<Object[]> countProjectsByOwner();
 }
