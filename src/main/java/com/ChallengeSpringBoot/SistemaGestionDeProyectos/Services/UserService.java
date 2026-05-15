@@ -1,36 +1,62 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services;
 
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRequestDTO;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRequestUpdateDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserResponseDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectUserRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class UserService implements IUserService {
 
     private final UserRepository userRepository;
-    private final ProjectService projectService;
-    private final TaskService taskService;
+    private final ProjectRepository projectRepository;
+    private final ProjectUserRepository projectUserRepository;
 
     /// Creacion de usuario
+    @Override
     public UserResponseDTO createUser(UserRequestDTO dto) {
 
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new RuntimeException("Ya existe un usuario con el email: " + dto.getEmail());
+        if (dto.getEmail() == null || dto.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("El email es obligatorio.");
         }
 
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             throw new RuntimeException("El nombre es obligatorio.");
         }
 
+        Optional<User> existingUser = userRepository.findByEmail(dto.getEmail());
+
+        if (existingUser.isPresent()) {
+
+            User user = existingUser.get();
+
+            // Usuario activo
+            if (Boolean.TRUE.equals(user.getActive())) {
+                throw new RuntimeException(
+                        "Ya existe un usuario activo con el email: "
+                                + dto.getEmail());
+            }
+
+            // Reactivación
+            user.setName(dto.getName());
+            user.setActive(true);
+
+            return mapToResponseDTO(userRepository.save(user));
+        }
+
+        // Creación normal
         User user = new User();
+
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
         user.setActive(true);
@@ -39,6 +65,7 @@ public class UserService {
     }
 
     /// Obtener todos los usuarios
+    @Override
     public List<UserResponseDTO> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(this::mapToResponseDTO)
@@ -46,6 +73,7 @@ public class UserService {
     }
 
     /// Obtener todos los usuarios activos
+    @Override
     public List<UserResponseDTO> getAllUsersWithActive() {
         return userRepository.findByActiveTrue().stream()
                 .map(this::mapToResponseDTO)
@@ -53,17 +81,19 @@ public class UserService {
     }
 
     /// Obtener usuario por id
+    @Override
     public UserResponseDTO getUserById(Integer idUser) {
-        User user = userRepository.findByIdAndActiveTrue(idUser)
+        User user = userRepository.findByIdUserAndActiveTrue(idUser)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + idUser));
         return mapToResponseDTO(user);
     }
 
     public User findUserById(Integer idUser) {
-        return userRepository.findByIdAndActiveTrue(idUser)
+        return userRepository.findByIdUserAndActiveTrue(idUser)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + idUser));
     }
 
+    @Override
     public UserResponseDTO getUserByName(String name) {
         User user = userRepository.findByNameAndActiveTrue(name)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con nombre: " + name));
@@ -75,6 +105,7 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con nombre: " + name));
     }
 
+    @Override
     public UserResponseDTO getUserByEmail(String email) {
         return mapToResponseDTO(findUserByEmail(email));
     }
@@ -84,8 +115,18 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con email: " + email));
     }
 
-    public UserResponseDTO updateUser(Integer idUser, UserRequestDTO dto) {
+    @Override
+    public UserResponseDTO updateUser(Integer idUser, UserRequestUpdateDTO dto) {
+
+        if (idUser == null) {
+            throw new RuntimeException("El ID del usuario es obligatorio.");
+        }
+
         User user = findUserById(idUser);
+
+        if (dto.getEmail() == null || dto.getEmail().trim().isEmpty()) {
+            throw new RuntimeException("El email es obligatorio.");
+        }
 
         // Validar email único solo si cambió
         if (!user.getEmail().equalsIgnoreCase(dto.getEmail())) {
@@ -105,17 +146,18 @@ public class UserService {
         return mapToResponseDTO(userRepository.save(user));
     }
 
+    @Override
     public void deleteUser(Integer idUser) {
         User user = findUserById(idUser);
 
-        if (projectService.hasActiveProjectsAsOwner(user)) {
+        if (projectRepository.existsByOwnerAndActiveTrue(user)) {
             throw new RuntimeException(
-                    "El usuario no se puede eliminar porque es propietario de un proyecto activo. Por favor, reasigne la propiedad del proyecto primero.");
+                    "El usuario no se puede eliminar porque es propietario de un proyecto activo.");
         }
 
-        if (taskService.hasActiveTasksAssigned(user)) {
+        if (projectUserRepository.countByUserAndProjectActiveTrue(user) > 0) {
             throw new RuntimeException(
-                    "El usuario no se puede eliminar porque tiene tareas activas asignadas. Por favor, reasigne las tareas primero.");
+                    "El usuario no se puede eliminar porque esta asignado a un proyecto activo.");
         }
 
         user.setActive(false);

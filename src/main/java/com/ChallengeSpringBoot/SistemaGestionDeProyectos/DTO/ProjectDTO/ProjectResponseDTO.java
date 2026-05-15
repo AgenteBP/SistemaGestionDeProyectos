@@ -17,4 +17,5 @@ public class ProjectResponseDTO {
     private String description;
     private UserResponseDTO owner;
     private List<UserResponseDTO> userAssigned;
+    private Boolean active;
 }
