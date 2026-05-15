@@ -111,10 +111,12 @@ public class ReportService implements IReportService {
 
                 return projectRepository.findByActiveTrue().stream()
                                 .map(project -> {
-                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(), List.of());
+                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(),
+                                                        List.of());
                                         List<Task> sorted = tasks.stream()
                                                         .sorted(Comparator.comparing(Task::getStartDate,
-                                                                        Comparator.nullsLast(Comparator.naturalOrder())))
+                                                                        Comparator.nullsLast(
+                                                                                        Comparator.naturalOrder())))
                                                         .toList();
 
                                         List<ReportResponseProjectDTO.TaskDetailDTO> taskDetails = sorted.stream()
@@ -143,10 +145,12 @@ public class ReportService implements IReportService {
 
                 return projectRepository.findByActiveTrue().stream()
                                 .map(project -> {
-                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(), List.of());
+                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(),
+                                                        List.of());
                                         List<Task> sorted = tasks.stream()
                                                         .sorted(Comparator.comparing(Task::getEndDate,
-                                                                        Comparator.nullsLast(Comparator.naturalOrder())))
+                                                                        Comparator.nullsLast(
+                                                                                        Comparator.naturalOrder())))
                                                         .toList();
 
                                         List<ReportResponseProjectDTO.TaskDetailDTO> taskDetails = sorted.stream()
@@ -176,7 +180,8 @@ public class ReportService implements IReportService {
                                 .filter(t -> projectIds.contains(t.getProject().getIdProject()))
                                 .toList();
 
-                Map<Integer, Long> pendingStepsCounts = stepRepository.countStepsNotCompletedByTask(StatusStep.FINALIZADO)
+                Map<Integer, Long> pendingStepsCounts = stepRepository
+                                .countStepsNotCompletedByTask(StatusStep.FINALIZADO)
                                 .stream()
                                 .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
 
@@ -185,10 +190,13 @@ public class ReportService implements IReportService {
 
                 return activeProjects.stream()
                                 .map(project -> {
-                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(), List.of());
-                                        List<ReportResponseTaskDTO.TotalStepsNotCompletedTasksDTO> stepsNotCompleted = tasks.stream()
+                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(),
+                                                        List.of());
+                                        List<ReportResponseTaskDTO.TotalStepsNotCompletedTasksDTO> stepsNotCompleted = tasks
+                                                        .stream()
                                                         .map(task -> {
-                                                                Long pendingSteps = pendingStepsCounts.getOrDefault(task.getIdTask(), 0L);
+                                                                Long pendingSteps = pendingStepsCounts
+                                                                                .getOrDefault(task.getIdTask(), 0L);
 
                                                                 ReportResponseTaskDTO.TotalStepsNotCompletedTasksDTO dto = new ReportResponseTaskDTO.TotalStepsNotCompletedTasksDTO();
                                                                 dto.setIdTask(task.getIdTask());
@@ -342,7 +350,8 @@ public class ReportService implements IReportService {
                                         }
                                 }
                                 // Fila de subtotal
-                                int totalInic = dto4.getTotalTasksIniciated() != null ? dto4.getTotalTasksIniciated() : 0;
+                                int totalInic = dto4.getTotalTasksIniciated() != null ? dto4.getTotalTasksIniciated()
+                                                : 0;
                                 PdfPCell subtotalCell = new PdfPCell(
                                                 new Phrase("Total: " + totalInic + " tarea(s) iniciada(s)",
                                                                 subtotalFont));
@@ -388,7 +397,8 @@ public class ReportService implements IReportService {
                                         }
                                 }
                                 // Fila de subtotal
-                                int totalComp = dto5.getTotalTasksCompleted() != null ? dto5.getTotalTasksCompleted() : 0;
+                                int totalComp = dto5.getTotalTasksCompleted() != null ? dto5.getTotalTasksCompleted()
+                                                : 0;
                                 PdfPCell subtotalCell5 = new PdfPCell(
                                                 new Phrase("Total: " + totalComp + " tarea(s) finalizada(s)",
                                                                 subtotalFont));
@@ -402,9 +412,10 @@ public class ReportService implements IReportService {
                         document.add(new Paragraph(" "));
 
                         // -----------------------------------------------
-                        // Item 6 — Pasos pendientes por tarea (sin columna ID)
+                        // Item 6 — Pasos que faltan para completar por tarea (sin columna ID)
                         // -----------------------------------------------
-                        document.add(createSectionTitle("6. Cantidad de pasos pendientes por tarea", sectionFont));
+                        document.add(createSectionTitle("6. Cantidad de pasos que faltan para completar por tarea",
+                                        sectionFont));
                         PdfPTable table6 = new PdfPTable(3);
                         table6.setWidthPercentage(100);
                         table6.setWidths(new float[] { 3f, 5f, 2f });
