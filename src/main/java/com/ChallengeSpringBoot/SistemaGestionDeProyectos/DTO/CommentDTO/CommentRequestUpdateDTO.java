@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CommentRequestUpdateDTO {
 
-    private Integer idComment;
+    // private Integer idComment;
     private String content;
     // private Integer idTask;
     private Integer idUser;

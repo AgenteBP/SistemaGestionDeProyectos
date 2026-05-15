@@ -13,7 +13,7 @@ public interface ICommentService {
 
     public CommentResponseDTO saveComment(CommentRequestDTO commentRequestDTO);
 
-    public CommentResponseDTO updateComment(CommentRequestUpdateDTO commentRequestUpdateDTO);
+    public CommentResponseDTO updateComment(Integer idComment, CommentRequestUpdateDTO commentRequestUpdateDTO);
 
     public void deleteComment(Integer idComment, Integer idUser);
 }

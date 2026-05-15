@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class TaskRequestUpdateDTO {
-    private Integer idTask;
+    // private Integer idTask;
     private String nameTask;
     private String description;
     private Integer idUser;

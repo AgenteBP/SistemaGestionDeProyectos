@@ -25,4 +25,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Intege
     boolean existsByProjectIdProjectAndUserIdUserAndActiveTrue(Integer idProject, Integer idUser);
 
     java.util.Optional<ProjectUser> findByProjectIdProjectAndUserIdUser(Integer idProject, Integer idUser);
+
+    Integer countByUserAndProjectActiveTrue(User user);
 }

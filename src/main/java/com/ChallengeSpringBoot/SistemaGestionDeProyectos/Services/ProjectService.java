@@ -200,7 +200,7 @@ public class ProjectService implements IProjectService {
 
     @Transactional
     @Override
-    public String deleteProject(Integer idProject, Integer idUser) {
+    public void deleteProject(Integer idProject, Integer idUser) {
 
         if (idProject == null) {
             throw new RuntimeException("El ID del proyecto es obligatorio.");
@@ -262,8 +262,6 @@ public class ProjectService implements IProjectService {
         project.setActive(false);
         projectRepository.save(project);
 
-        return "Proyecto '" + project.getNameProject()
-                + "' eliminado correctamente junto con todas sus tareas, pasos, comentarios y asignaciones.";
     }
 
     // Funciones auxiliares

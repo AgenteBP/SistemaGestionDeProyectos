@@ -24,5 +24,6 @@ public interface IProjectUserService {
 
     void deleteUserAssigned(Integer idProject, Integer idUser, Integer idOwner);
 
-    ProjectUserResponseDTO changeUserAssigned(ProjectUserRequestUpdateDTO projectUserRequestUpdateDTO);
+    ProjectUserResponseDTO changeUserAssigned(Integer idProject,
+            ProjectUserRequestUpdateDTO projectUserRequestUpdateDTO);
 }

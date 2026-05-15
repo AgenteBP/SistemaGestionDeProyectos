@@ -1,12 +1,16 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services;
 
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRequestDTO;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRequestUpdateDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserResponseDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectRepository;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectUserRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.TaskRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,7 @@ public class UserService implements IUserService {
 
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
+    private final ProjectUserRepository projectUserRepository;
     private final TaskRepository taskRepository;
 
     /// Creacion de usuario
@@ -27,15 +32,33 @@ public class UserService implements IUserService {
             throw new RuntimeException("El email es obligatorio.");
         }
 
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new RuntimeException("Ya existe un usuario con el email: " + dto.getEmail());
-        }
-
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             throw new RuntimeException("El nombre es obligatorio.");
         }
 
+        Optional<User> existingUser = userRepository.findByEmail(dto.getEmail());
+
+        if (existingUser.isPresent()) {
+
+            User user = existingUser.get();
+
+            // Usuario activo
+            if (Boolean.TRUE.equals(user.getActive())) {
+                throw new RuntimeException(
+                        "Ya existe un usuario activo con el email: "
+                                + dto.getEmail());
+            }
+
+            // Reactivación
+            user.setName(dto.getName());
+            user.setActive(true);
+
+            return mapToResponseDTO(userRepository.save(user));
+        }
+
+        // Creación normal
         User user = new User();
+
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
         user.setActive(true);
@@ -95,7 +118,12 @@ public class UserService implements IUserService {
     }
 
     @Override
-    public UserResponseDTO updateUser(Integer idUser, UserRequestDTO dto) {
+    public UserResponseDTO updateUser(Integer idUser, UserRequestUpdateDTO dto) {
+
+        if (idUser == null) {
+            throw new RuntimeException("El ID del usuario es obligatorio.");
+        }
+
         User user = findUserById(idUser);
 
         if (dto.getEmail() == null || dto.getEmail().trim().isEmpty()) {
@@ -129,10 +157,15 @@ public class UserService implements IUserService {
                     "El usuario no se puede eliminar porque es propietario de un proyecto activo. Por favor, reasigne la propiedad del proyecto primero.");
         }
 
-        if (taskRepository.existsByAssignedUserAndActiveTrue(user)) {
+        if (projectUserRepository.countByUserAndProjectActiveTrue(user) > 0) {
             throw new RuntimeException(
-                    "El usuario no se puede eliminar porque tiene tareas activas asignadas.");
+                    "El usuario no se puede eliminar porque esta asignado a un proyecto activo.");
         }
+
+        // if (taskRepository.existsByAssignedUserAndActiveTrue(user)) {
+        // throw new RuntimeException(
+        // "El usuario no se puede eliminar porque tiene tareas activas asignadas.");
+        // }
 
         user.setActive(false);
         userRepository.save(user);

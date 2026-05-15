@@ -25,5 +25,5 @@ public interface IProjectService {
 
     boolean hasActiveProjectsAsOwner(User user);
 
-    String deleteProject(Integer idProject, Integer idUser);
+    void deleteProject(Integer idProject, Integer idUser);
 }

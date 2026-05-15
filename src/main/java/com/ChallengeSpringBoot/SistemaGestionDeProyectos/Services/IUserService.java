@@ -1,10 +1,9 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services;
 
 import java.util.List;
-
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRequestDTO;
+import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRequestUpdateDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserResponseDTO;
-import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
 
 public interface IUserService {
 
@@ -26,7 +25,7 @@ public interface IUserService {
 
     // User findUserByEmail(String email);
 
-    UserResponseDTO updateUser(Integer idUser, UserRequestDTO dto);
+    UserResponseDTO updateUser(Integer idUser, UserRequestUpdateDTO dto);
 
     void deleteUser(Integer idUser);
 }

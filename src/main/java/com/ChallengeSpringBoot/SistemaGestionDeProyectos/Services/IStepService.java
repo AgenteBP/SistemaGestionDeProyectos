@@ -13,7 +13,7 @@ public interface IStepService {
 
     StepResponseDTO nextStatusStep(Integer idStep, Integer idUser);
 
-    void deleteStep(Integer idStep);
+    void deleteStep(Integer idStep, Integer idUser);
 
     StepResponseDTO updateNameStep(Integer idStep, String nameStep);
 }

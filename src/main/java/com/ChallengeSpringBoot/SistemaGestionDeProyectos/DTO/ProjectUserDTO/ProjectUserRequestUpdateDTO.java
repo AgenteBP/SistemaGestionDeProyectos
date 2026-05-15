@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProjectUserRequestUpdateDTO {
-    private Integer idProject;
+    // private Integer idProject;
     private Integer idUserAssigned;
     private Integer idOwner;
     private Integer idNewUser;

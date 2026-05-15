@@ -84,8 +84,8 @@ public class CommentService implements ICommentService {
     // Actualizar comentario
     @Transactional
     @Override
-    public CommentResponseDTO updateComment(CommentRequestUpdateDTO commentRequestUpdateDTO) {
-        if (commentRequestUpdateDTO.getIdComment() == null) {
+    public CommentResponseDTO updateComment(Integer idComment, CommentRequestUpdateDTO commentRequestUpdateDTO) {
+        if (idComment == null) {
             throw new RuntimeException("El ID del comentario es obligatorio.");
         }
         if (commentRequestUpdateDTO.getContent() == null || commentRequestUpdateDTO.getContent().trim().isEmpty()) {
@@ -95,9 +95,9 @@ public class CommentService implements ICommentService {
             throw new RuntimeException("El ID del usuario es obligatorio.");
         }
 
-        Comment comment = commentRepository.findByIdCommentAndActiveTrue(commentRequestUpdateDTO.getIdComment())
+        Comment comment = commentRepository.findByIdCommentAndActiveTrue(idComment)
                 .orElseThrow(() -> new RuntimeException(
-                        "Comentario no encontrado o inactivo con id: " + commentRequestUpdateDTO.getIdComment()));
+                        "Comentario no encontrado o inactivo con id: " + idComment));
 
         // Validar permisos: autor del comentario o dueño del proyecto
         boolean isAuthor = comment.getAuthor().getIdUser().equals(commentRequestUpdateDTO.getIdUser());

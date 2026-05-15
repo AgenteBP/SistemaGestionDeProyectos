@@ -129,8 +129,9 @@ public class ProjectUserService implements IProjectUserService {
 
     @Override
     @Transactional
-    public ProjectUserResponseDTO changeUserAssigned(ProjectUserRequestUpdateDTO projectUserRequestUpdateDTO) {
-        Integer idProject = projectUserRequestUpdateDTO.getIdProject();
+    public ProjectUserResponseDTO changeUserAssigned(Integer idProject,
+            ProjectUserRequestUpdateDTO projectUserRequestUpdateDTO) {
+
         Integer idOldUser = projectUserRequestUpdateDTO.getIdUserAssigned();
         Integer idNewUser = projectUserRequestUpdateDTO.getIdNewUser();
         Integer idOwner = projectUserRequestUpdateDTO.getIdOwner();

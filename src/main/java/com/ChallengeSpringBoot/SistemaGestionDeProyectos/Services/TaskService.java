@@ -46,6 +46,30 @@ public class TaskService implements ITaskService {
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada con id: " + idTask));
     }
 
+    @Override
+    public List<TaskResponseDTO> findTaskWithNameOrStatus(String nameTask, StatusTask statusTask) {
+        List<Task> tasks = taskRepository.findByActiveTrue();
+
+        // Filtro por nombre (parcial, sin distinción de mayúsculas)
+        if (nameTask != null && !nameTask.trim().isEmpty()) {
+            String filter = nameTask.trim().toLowerCase();
+            tasks = tasks.stream()
+                    .filter(t -> t.getNameTask().toLowerCase().contains(filter))
+                    .toList();
+        }
+
+        // Filtro por estado
+        if (statusTask != null) {
+            tasks = tasks.stream()
+                    .filter(t -> t.getStatusTask() == statusTask)
+                    .toList();
+        }
+
+        return tasks.stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
+
     @Transactional
     @Override
     public TaskResponseDTO saveTask(TaskRequestDTO taskRequestDTO) {
@@ -149,19 +173,26 @@ public class TaskService implements ITaskService {
 
     @Transactional
     @Override
-    public TaskResponseDTO updateTask(TaskRequestUpdateDTO taskRequestUpdateDTO) {
-        Integer idTask = taskRequestUpdateDTO.getIdTask();
+    public TaskResponseDTO updateTask(Integer idTask, TaskRequestUpdateDTO taskRequestUpdateDTO) {
         Integer idUser = taskRequestUpdateDTO.getIdUser();
 
         if (idUser == null) {
             throw new RuntimeException("El ID del usuario es obligatorio para realizar la actualización.");
         }
 
+        if (idTask == null) {
+            throw new RuntimeException("El ID de la tarea es obligatorio.");
+        }
+
         Task task = getTaskById(idTask);
 
+        boolean isCreator = task.getCreatedBy().getIdUser().equals(idUser);
+        boolean isOwner = task.getProject().getOwner().getIdUser().equals(idUser);
+
         // Solo el creador de la tarea puede modificarla
-        if (!task.getCreatedBy().getIdUser().equals(idUser)) {
-            throw new RuntimeException("Solo el creador de la tarea tiene permisos para modificar sus datos.");
+        if (!isCreator && !isOwner) {
+            throw new RuntimeException(
+                    "Solo el creador de la tarea o el dueño del proyecto tiene permisos para modificar sus datos.");
         }
 
         if (!task.getActive()) {
@@ -183,9 +214,27 @@ public class TaskService implements ITaskService {
 
     @Transactional
     @Override
-    public void deleteTask(Integer idTask) {
+    public void deleteTask(Integer idTask, Integer idUser) {
+
+        if (idTask == null) {
+            throw new RuntimeException("El ID de la tarea es obligatorio.");
+        }
+
+        if (idUser == null) {
+            throw new RuntimeException("El ID del usuario es obligatorio.");
+        }
+
         Task task = taskRepository.findById(idTask)
                 .orElseThrow(() -> new RuntimeException("Tarea no encontrada con id: " + idTask));
+
+        boolean isCreator = task.getCreatedBy().getIdUser().equals(idUser);
+        boolean isOwner = task.getProject().getOwner().getIdUser().equals(idUser);
+
+        // Solo el creador de la tarea puede modificarla
+        if (!isCreator && !isOwner) {
+            throw new RuntimeException(
+                    "Solo el creador de la tarea o el dueño del proyecto tiene permisos para modificar sus datos.");
+        }
 
         if (!task.getActive()) {
             throw new RuntimeException("La tarea ya se encuentra inactiva.");

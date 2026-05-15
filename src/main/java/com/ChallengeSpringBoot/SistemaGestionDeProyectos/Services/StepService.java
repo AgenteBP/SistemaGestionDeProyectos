@@ -1,9 +1,7 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services;
 
 import java.util.List;
-
 import org.springframework.stereotype.Service;
-
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.StepDTO.StepRequestDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.StepDTO.StepResponseDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Enums.StatusStep;
@@ -84,15 +82,6 @@ public class StepService implements IStepService {
         return mapToResponseDTO(stepRepository.save(step));
     }
 
-    // public StepResponseDTO updateStatusStep(Integer idStep, StatusStep
-    // statusStep) {
-    // Step step = stepRepository.findById(idStep)
-    // .orElseThrow(() -> new RuntimeException("Paso no encontrado con id: " +
-    // idStep));
-    // step.setStatusStep(statusStep);
-    // return mapToResponseDTO(stepRepository.save(step));
-    // }
-
     /// Actualizar el paso
     @Override
     public StepResponseDTO nextStatusStep(Integer idStep, Integer idUser) {
@@ -115,6 +104,10 @@ public class StepService implements IStepService {
         // Validar que la tarea no esté completada
         if (step.getTask().getStatusTask() == StatusTask.COMPLETADA) {
             throw new RuntimeException("No se puede modificar un paso de una tarea completada.");
+        }
+
+        if (!step.getActive()) {
+            throw new RuntimeException("No se puede modificar un paso inactivo.");
         }
 
         // 3. Validar que quien realiza la acción sea el usuario asignado, el creador de
@@ -157,14 +150,28 @@ public class StepService implements IStepService {
 
     // Eliminar un paso
     @Override
-    public void deleteStep(Integer idStep) {
+    public void deleteStep(Integer idStep, Integer idUser) {
 
         if (idStep == null) {
             throw new RuntimeException("El ID del paso es obligatorio.");
         }
 
+        if (idUser == null) {
+            throw new RuntimeException("El ID del usuario es obligatorio.");
+        }
+
         Step step = stepRepository.findById(idStep)
                 .orElseThrow(() -> new RuntimeException("Paso no encontrado con id: " + idStep));
+
+        // Validar que quien realiza la acción sea el creador de la tarea o el dueño del
+        // proyecto
+        boolean isOwner = step.getTask().getProject().getOwner().getIdUser().equals(idUser);
+        boolean isCreatedBy = step.getTask().getCreatedBy() != null
+                && step.getTask().getCreatedBy().getIdUser().equals(idUser);
+
+        if (!isOwner && !isCreatedBy) {
+            throw new RuntimeException("El usuario no tiene permisos para modificar pasos de esta tarea.");
+        }
 
         // Validar que el paso esté activo
         if (!step.getActive()) {
