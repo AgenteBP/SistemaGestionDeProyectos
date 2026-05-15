@@ -29,6 +29,12 @@ public class ReportResponseProjectDTO {
     @Schema(description = "Lista de tareas detalladas (con nombre y fecha), según el reporte")
     List<TaskDetailDTO> tasks;
 
+    @Schema(description = "Fecha de inicio de la primera tarea iniciada (usada para ordenamiento)")
+    private LocalDate startDate;
+
+    @Schema(description = "Fecha de fin de la primera tarea finalizada (usada para ordenamiento)")
+    private LocalDate endDate;
+
     // -----------------------------------------------
     // Clase interna: detalle de cada tarea
     // -----------------------------------------------

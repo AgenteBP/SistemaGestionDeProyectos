@@ -3,6 +3,8 @@ package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 
@@ -40,4 +42,13 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
     boolean existsByNameTaskIgnoreCaseAndProjectIdProjectAndActiveTrue(String nameTask, Integer idProject);
 
     boolean existsByNameTaskIgnoreCaseAndProjectIdProjectAndActiveTrueAndIdTaskNot(String nameTask, Integer idProject, Integer idTask);
+
+    @Query("SELECT t.assignedUser.idUser, COUNT(t) FROM Task t WHERE t.active = true GROUP BY t.assignedUser.idUser")
+    List<Object[]> countTasksByAssignedUser();
+
+    @Query("SELECT t.project.idProject, COUNT(t) FROM Task t WHERE t.statusTask = :status AND t.active = true GROUP BY t.project.idProject")
+    List<Object[]> countTasksByProjectAndStatus(@Param("status") StatusTask status);
+
+    @Query("SELECT t FROM Task t WHERE t.statusTask = :status AND t.active = true AND t.project.active = true")
+    List<Task> findByStatusAndActiveProject(@Param("status") StatusTask status);
 }

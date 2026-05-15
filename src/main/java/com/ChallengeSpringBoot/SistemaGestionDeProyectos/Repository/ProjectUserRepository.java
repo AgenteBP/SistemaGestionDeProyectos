@@ -3,6 +3,7 @@ package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.Project;
@@ -27,4 +28,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Intege
     java.util.Optional<ProjectUser> findByProjectIdProjectAndUserIdUser(Integer idProject, Integer idUser);
 
     Integer countByUserAndProjectActiveTrue(User user);
+
+    @Query("SELECT pu.user.idUser, COUNT(pu) FROM ProjectUser pu WHERE pu.project.active = true AND pu.active = true GROUP BY pu.user.idUser")
+    List<Object[]> countProjectsByUserMember();
 }

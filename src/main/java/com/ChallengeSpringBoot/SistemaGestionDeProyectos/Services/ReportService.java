@@ -5,6 +5,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.ReportDTO.ReportGeneralDTO;
@@ -45,15 +47,21 @@ public class ReportService implements IReportService {
 
         @Override
         public List<ReportResponseUserDTO> getQuantitiesProjectsUser() {
+                Map<Integer, Long> ownerCounts = projectRepository.countProjectsByOwner().stream()
+                                .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
+
+                Map<Integer, Long> memberCounts = projectUserRepository.countProjectsByUserMember().stream()
+                                .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
+
                 return userRepository.findByActiveTrue().stream()
                                 .map(user -> {
-                                        Integer asOwner = projectRepository.countByOwnerAndActiveTrue(user);
-                                        Integer asMember = projectUserRepository.countByUserAndProjectActiveTrue(user);
+                                        Long asOwner = ownerCounts.getOrDefault(user.getIdUser(), 0L);
+                                        Long asMember = memberCounts.getOrDefault(user.getIdUser(), 0L);
 
                                         ReportResponseUserDTO dto = new ReportResponseUserDTO();
                                         dto.setEmailUser(user.getEmail());
                                         dto.setNameUser(user.getName());
-                                        dto.setTotalProjectAssigned(asOwner + asMember);
+                                        dto.setTotalProjectAssigned(asOwner.intValue() + asMember.intValue());
                                         return dto;
                                 })
                                 .toList();
@@ -61,14 +69,17 @@ public class ReportService implements IReportService {
 
         @Override
         public List<ReportResponseUserDTO> getQuantitiesTasksUser() {
+                Map<Integer, Long> taskCounts = taskRepository.countTasksByAssignedUser().stream()
+                                .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
+
                 return userRepository.findByActiveTrue().stream()
                                 .map(user -> {
-                                        Integer totalTasks = taskRepository.countByAssignedUserAndActiveTrue(user);
+                                        Long totalTasks = taskCounts.getOrDefault(user.getIdUser(), 0L);
 
                                         ReportResponseUserDTO dto = new ReportResponseUserDTO();
                                         dto.setEmailUser(user.getEmail());
                                         dto.setNameUser(user.getName());
-                                        dto.setTotalTaskAssigned(totalTasks);
+                                        dto.setTotalTaskAssigned(totalTasks.intValue());
                                         return dto;
                                 })
                                 .toList();
@@ -76,16 +87,17 @@ public class ReportService implements IReportService {
         }
 
         public List<ReportResponseProjectDTO> getQuantitiesTaskPendingProject() {
+                Map<Integer, Long> pendingCounts = taskRepository.countTasksByProjectAndStatus(StatusTask.PENDIENTE)
+                                .stream()
+                                .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
+
                 return projectRepository.findByActiveTrue().stream()
                                 .map(project -> {
-                                        Integer totalPending = taskRepository
-                                                        .countByProjectIdProjectAndStatusTaskAndActiveTrue(
-                                                                        project.getIdProject(),
-                                                                        StatusTask.PENDIENTE);
+                                        Long totalPending = pendingCounts.getOrDefault(project.getIdProject(), 0L);
 
                                         ReportResponseProjectDTO dto = new ReportResponseProjectDTO();
                                         dto.setNameProject(project.getNameProject());
-                                        dto.setTotalTasksPending(totalPending);
+                                        dto.setTotalTasksPending(totalPending.intValue());
                                         return dto;
                                 })
                                 .toList();
@@ -93,13 +105,17 @@ public class ReportService implements IReportService {
 
         @Override
         public List<ReportResponseProjectDTO> getQuantitiesTaskIniciatedProject() {
+                List<Task> allIniciatedTasks = taskRepository.findByStatusAndActiveProject(StatusTask.INICIADA);
+                Map<Integer, List<Task>> tasksByProject = allIniciatedTasks.stream()
+                                .collect(Collectors.groupingBy(t -> t.getProject().getIdProject()));
+
                 return projectRepository.findByActiveTrue().stream()
-                                .sorted(Comparator.comparing(this::getFirstStartedTaskDate,
-                                                Comparator.nullsLast(Comparator.naturalOrder())))
                                 .map(project -> {
-                                        List<Task> sorted = taskRepository
-                                                        .findByProjectIdProjectAndStatusTaskAndActiveTrueOrderByStartDateAsc(
-                                                                        project.getIdProject(), StatusTask.INICIADA);
+                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(), List.of());
+                                        List<Task> sorted = tasks.stream()
+                                                        .sorted(Comparator.comparing(Task::getStartDate,
+                                                                        Comparator.nullsLast(Comparator.naturalOrder())))
+                                                        .toList();
 
                                         List<ReportResponseProjectDTO.TaskDetailDTO> taskDetails = sorted.stream()
                                                         .map(t -> new ReportResponseProjectDTO.TaskDetailDTO(
@@ -110,20 +126,28 @@ public class ReportService implements IReportService {
                                         dto.setNameProject(project.getNameProject());
                                         dto.setTotalTasksIniciated(sorted.size());
                                         dto.setTasks(taskDetails);
+                                        // Guardamos la fecha del primero para el sort final
+                                        dto.setStartDate(sorted.isEmpty() ? null : sorted.get(0).getStartDate());
                                         return dto;
                                 })
+                                .sorted(Comparator.comparing(ReportResponseProjectDTO::getStartDate,
+                                                Comparator.nullsLast(Comparator.naturalOrder())))
                                 .toList();
         }
 
         @Override
         public List<ReportResponseProjectDTO> getQuantitiesTaskCompletedProject() {
+                List<Task> allCompletedTasks = taskRepository.findByStatusAndActiveProject(StatusTask.COMPLETADA);
+                Map<Integer, List<Task>> tasksByProject = allCompletedTasks.stream()
+                                .collect(Collectors.groupingBy(t -> t.getProject().getIdProject()));
+
                 return projectRepository.findByActiveTrue().stream()
-                                .sorted(Comparator.comparing(this::getFirstCompletedTaskDate,
-                                                Comparator.nullsLast(Comparator.naturalOrder())))
                                 .map(project -> {
-                                        List<Task> sorted = taskRepository
-                                                        .findByProjectIdProjectAndStatusTaskAndActiveTrueOrderByEndDateAsc(
-                                                                        project.getIdProject(), StatusTask.COMPLETADA);
+                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(), List.of());
+                                        List<Task> sorted = tasks.stream()
+                                                        .sorted(Comparator.comparing(Task::getEndDate,
+                                                                        Comparator.nullsLast(Comparator.naturalOrder())))
+                                                        .toList();
 
                                         List<ReportResponseProjectDTO.TaskDetailDTO> taskDetails = sorted.stream()
                                                         .map(t -> new ReportResponseProjectDTO.TaskDetailDTO(
@@ -134,28 +158,42 @@ public class ReportService implements IReportService {
                                         dto.setNameProject(project.getNameProject());
                                         dto.setTotalTasksCompleted(sorted.size());
                                         dto.setTasks(taskDetails);
+                                        // Guardamos la fecha del primero para el sort final
+                                        dto.setEndDate(sorted.isEmpty() ? null : sorted.get(0).getEndDate());
                                         return dto;
                                 })
+                                .sorted(Comparator.comparing(ReportResponseProjectDTO::getEndDate,
+                                                Comparator.nullsLast(Comparator.naturalOrder())))
                                 .toList();
         }
 
         @Override
         public List<ReportResponseTaskDTO> getQuantitiesStepsNotCompletedTasks() {
-                return projectRepository.findByActiveTrue().stream()
+                List<Project> activeProjects = projectRepository.findByActiveTrue();
+                List<Integer> projectIds = activeProjects.stream().map(Project::getIdProject).toList();
+
+                List<Task> tasksInProjects = taskRepository.findByActiveTrue().stream()
+                                .filter(t -> projectIds.contains(t.getProject().getIdProject()))
+                                .toList();
+
+                Map<Integer, Long> pendingStepsCounts = stepRepository.countStepsNotCompletedByTask(StatusStep.FINALIZADO)
+                                .stream()
+                                .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
+
+                Map<Integer, List<Task>> tasksByProject = tasksInProjects.stream()
+                                .collect(Collectors.groupingBy(t -> t.getProject().getIdProject()));
+
+                return activeProjects.stream()
                                 .map(project -> {
-                                        List<ReportResponseTaskDTO.TotalStepsNotCompletedTasksDTO> stepsNotCompleted = taskRepository
-                                                        .findByProjectIdProjectAndActiveTrue(project.getIdProject())
-                                                        .stream()
+                                        List<Task> tasks = tasksByProject.getOrDefault(project.getIdProject(), List.of());
+                                        List<ReportResponseTaskDTO.TotalStepsNotCompletedTasksDTO> stepsNotCompleted = tasks.stream()
                                                         .map(task -> {
-                                                                Integer pendingSteps = stepRepository
-                                                                                .countByTaskAndStatusStepNotAndActiveTrue(
-                                                                                                task,
-                                                                                                StatusStep.FINALIZADO);
+                                                                Long pendingSteps = pendingStepsCounts.getOrDefault(task.getIdTask(), 0L);
 
                                                                 ReportResponseTaskDTO.TotalStepsNotCompletedTasksDTO dto = new ReportResponseTaskDTO.TotalStepsNotCompletedTasksDTO();
                                                                 dto.setIdTask(task.getIdTask());
                                                                 dto.setNameTask(task.getNameTask());
-                                                                dto.setTotalStepsNotCompleted(pendingSteps);
+                                                                dto.setTotalStepsNotCompleted(pendingSteps.intValue());
                                                                 return dto;
                                                         })
                                                         .toList();
@@ -395,31 +433,6 @@ public class ReportService implements IReportService {
                         throw new RuntimeException("Error al generar el reporte PDF: " + e.getMessage());
                 }
 
-        }
-
-        /// Funciones auxiliares
-        private LocalDate getFirstStartedTaskDate(Project project) {
-                return taskRepository
-                                .findByProjectIdProjectAndStatusTaskAndActiveTrueOrderByStartDateAsc(
-                                                project.getIdProject(),
-                                                StatusTask.INICIADA)
-                                .stream()
-                                .map(Task::getStartDate)
-                                .filter(date -> date != null)
-                                .findFirst()
-                                .orElse(null);
-        }
-
-        private LocalDate getFirstCompletedTaskDate(Project project) {
-                return taskRepository
-                                .findByProjectIdProjectAndStatusTaskAndActiveTrueOrderByEndDateAsc(
-                                                project.getIdProject(),
-                                                StatusTask.COMPLETADA)
-                                .stream()
-                                .map(Task::getEndDate)
-                                .filter(date -> date != null)
-                                .findFirst()
-                                .orElse(null);
         }
 
         /// pdf
