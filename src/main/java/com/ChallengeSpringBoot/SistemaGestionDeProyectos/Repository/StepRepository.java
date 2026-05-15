@@ -19,4 +19,8 @@ public interface StepRepository extends JpaRepository<Step, Integer> {
 
     Integer countByTaskAndStatusStepNotAndActiveTrue(Task task, StatusStep statusStep);
 
+    boolean existsByNameStepIgnoreCaseAndTaskIdTaskAndActiveTrue(String nameStep, Integer idTask);
+
+    boolean existsByNameStepIgnoreCaseAndTaskIdTaskAndActiveTrueAndIdStepNot(String nameStep, Integer idTask, Integer idStep);
+
 }

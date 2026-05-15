@@ -180,11 +180,12 @@ public class ProjectService implements IProjectService {
 
         if (projectRequestDTO.getNameProject() != null && !projectRequestDTO.getNameProject().trim().isEmpty()
                 && !project.getNameProject().equalsIgnoreCase(projectRequestDTO.getNameProject())) {
-            boolean nameProjectExists = projectRepository
-                    .existsByNameProjectIgnoreCase(projectRequestDTO.getNameProject());
-            if (nameProjectExists) {
+            boolean nameExists = projectRepository
+                    .existsByNameProjectIgnoreCaseAndActiveTrueAndIdProjectNot(
+                            projectRequestDTO.getNameProject(), project.getIdProject());
+            if (nameExists) {
                 throw new RuntimeException(
-                        "Ya existe un proyecto con el nombre: " + projectRequestDTO.getNameProject());
+                        "Ya existe un proyecto activo con el nombre: " + projectRequestDTO.getNameProject());
             }
 
             project.setNameProject(projectRequestDTO.getNameProject());

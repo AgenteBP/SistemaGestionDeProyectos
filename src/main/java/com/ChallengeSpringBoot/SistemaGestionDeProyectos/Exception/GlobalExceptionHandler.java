@@ -26,10 +26,33 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, getMessage(ex), request);
     }
 
+    // @ExceptionHandler(DataIntegrityViolationException.class)
+    // public ResponseEntity<ErrorResponseDTO>
+    // handleDataIntegrity(DataIntegrityViolationException ex,
+    // HttpServletRequest request) {
+    // return buildResponse(HttpStatus.CONFLICT, "Violacion de integridad en la base
+    // de datos.", request);
+    // }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponseDTO> handleDataIntegrity(DataIntegrityViolationException ex,
-            HttpServletRequest request) {
-        return buildResponse(HttpStatus.CONFLICT, "Violacion de integridad en la base de datos.", request);
+    public ResponseEntity<ErrorResponseDTO> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+
+        String message = "Ya existe un registro con esos datos únicos.";
+
+        // Podés hacer el mensaje más específico según el campo
+        if (ex.getMessage() != null && ex.getMessage().contains("name_project")) {
+            message = "Ya existe un proyecto con ese nombre.";
+        }
+
+        ErrorResponseDTO error = new ErrorResponseDTO(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(), // 409
+                "Conflict",
+                message,
+                request.getRequestURI());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

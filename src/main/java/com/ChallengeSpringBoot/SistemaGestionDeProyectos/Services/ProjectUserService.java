@@ -92,25 +92,57 @@ public class ProjectUserService implements IProjectUserService {
     // }
 
     @Override
-    public ProjectUserResponseDTO saveAllProjectUsers(ProjectUserRequestDTO projectUserRequestDTO) {
-        if (projectUserRequestDTO.getIdProject() == null || projectUserRequestDTO.getIdOwner() == null
-                || projectUserRequestDTO.getIdUsers() == null || projectUserRequestDTO.getIdUsers().isEmpty()) {
+    public ProjectUserResponseDTO saveAllProjectUsers(ProjectUserRequestDTO dto) {
+
+        // 1. Validaciones básicas
+        if (dto.getIdProject() == null || dto.getIdOwner() == null
+                || dto.getIdUsers() == null || dto.getIdUsers().isEmpty()) {
             throw new RuntimeException(
                     "Debe proporcionar el ID del proyecto, el ID del propietario y al menos un ID de usuario.");
         }
-        Project project = getProjectById(projectUserRequestDTO.getIdProject());
 
-        validateProjectOwner(project, projectUserRequestDTO.getIdOwner());
+        // 2. Validar proyecto
+        Project project = getProjectById(dto.getIdProject());
+        if (!project.getActive()) {
+            throw new RuntimeException("No se pueden agregar usuarios a un proyecto inactivo.");
+        }
 
-        List<User> users = projectUserRequestDTO.getIdUsers().stream()
+        // 3. Validar que quien agrega sea el owner
+        validateProjectOwner(project, dto.getIdOwner());
+
+        // 4. Validar usuarios
+        List<User> users = dto.getIdUsers().stream()
                 .map(this::getUserById)
                 .toList();
-        users.forEach(user -> validateActiveUser(user, user.getIdUser()));
 
+        users.forEach(user -> {
+
+            // Usuario activo
+            validateActiveUser(user, user.getIdUser());
+
+            // No es el owner
+            if (project.getOwner().getIdUser().equals(user.getIdUser())) {
+                throw new RuntimeException(
+                        "El usuario " + user.getName()
+                                + " es el owner del proyecto y no puede agregarse como miembro.");
+            }
+
+            // No es ya miembro activo
+            boolean isMember = projectUserRepository
+                    .existsByProjectIdProjectAndUserIdUserAndActiveTrue(
+                            project.getIdProject(), user.getIdUser());
+            if (isMember) {
+                throw new RuntimeException(
+                        "El usuario " + user.getName() + " ya es miembro activo del proyecto.");
+            }
+        });
+
+        // 5. Crear los ProjectUser
         List<ProjectUser> projectUsers = users.stream()
                 .map(user -> {
                     ProjectUser projectUser = projectUserRepository
-                            .findByProjectIdProjectAndUserIdUser(project.getIdProject(), user.getIdUser())
+                            .findByProjectIdProjectAndUserIdUser(
+                                    project.getIdProject(), user.getIdUser())
                             .orElse(new ProjectUser());
                     projectUser.setProject(project);
                     projectUser.setUser(user);
@@ -118,6 +150,7 @@ public class ProjectUserService implements IProjectUserService {
                     return projectUser;
                 })
                 .toList();
+
         List<ProjectUser> savedProjectUsers = projectUserRepository.saveAll(projectUsers);
 
         Integer idProjectUser = savedProjectUsers.size() == 1

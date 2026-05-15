@@ -16,6 +16,10 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
 
     boolean existsByNameProjectIgnoreCase(String nameProject);
 
+    boolean existsByNameProjectIgnoreCaseAndActiveTrue(String nameProject);
+
+    boolean existsByNameProjectIgnoreCaseAndActiveTrueAndIdProjectNot(String nameProject, Integer idProject);
+
     boolean existsByOwnerAndActiveTrue(User owner);
 
     Integer countByOwnerAndActiveTrue(User user);

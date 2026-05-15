@@ -93,14 +93,15 @@ public class StepController {
         @Operation(summary = "Actualizar el nombre de un paso", description = "Permite renombrar un paso mientras la tarea no esté completada.")
         @ApiResponses({
                         @ApiResponse(responseCode = "200", description = "Nombre del paso actualizado correctamente"),
-                        @ApiResponse(responseCode = "400", description = "La tarea está completada o inactiva", content = @Content),
+                        @ApiResponse(responseCode = "400", description = "La tarea está completada o inactiva, o el usuario no tiene permisos", content = @Content),
                         @ApiResponse(responseCode = "404", description = "Paso no encontrado", content = @Content)
         })
         @PutMapping("/update-name/{idStep}")
         public ResponseEntity<StepResponseDTO> updateNameStep(
                         @Parameter(description = "ID del paso", example = "1") @PathVariable Integer idStep,
-                        @Parameter(description = "Nuevo nombre del paso", example = "Crear diagrama ER actualizado") @RequestParam String nameStep) {
-                return ResponseEntity.ok(stepService.updateNameStep(idStep, nameStep));
+                        @Parameter(description = "Nuevo nombre del paso", example = "Crear diagrama ER actualizado") @RequestParam String nameStep,
+                        @Parameter(description = "ID del usuario que realiza la acción", example = "2") @RequestParam Integer idUser) {
+                return ResponseEntity.ok(stepService.updateNameStep(idStep, nameStep, idUser));
         }
 
         // ==========================

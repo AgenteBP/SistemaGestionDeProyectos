@@ -73,6 +73,14 @@ public class StepService implements IStepService {
             throw new RuntimeException("No se pueden agregar pasos a una tarea inactiva.");
         }
 
+        // 4. Verificar nombre duplicado dentro de la tarea
+        if (stepRepository.existsByNameStepIgnoreCaseAndTaskIdTaskAndActiveTrue(
+                stepRequestDTO.getNameStep(), stepRequestDTO.getIdTask())) {
+            throw new RuntimeException(
+                    "Ya existe un paso activo con el nombre '" + stepRequestDTO.getNameStep()
+                            + "' en esta tarea.");
+        }
+
         Step step = new Step();
         step.setNameStep(stepRequestDTO.getNameStep());
         step.setTask(task);
@@ -194,7 +202,7 @@ public class StepService implements IStepService {
 
     /// Actualizar nombre de un paso
     @Override
-    public StepResponseDTO updateNameStep(Integer idStep, String nameStep) {
+    public StepResponseDTO updateNameStep(Integer idStep, String nameStep, Integer idUser) {
         if (idStep == null) {
             throw new RuntimeException("El ID del paso es obligatorio.");
         }
@@ -202,8 +210,22 @@ public class StepService implements IStepService {
             throw new RuntimeException("El nombre del paso es obligatorio.");
         }
 
+        if (idUser == null) {
+            throw new RuntimeException("El ID del usuario es obligatorio.");
+        }
+
         Step step = stepRepository.findById(idStep)
                 .orElseThrow(() -> new RuntimeException("Paso no encontrado con id: " + idStep));
+
+        // Validar que quien realiza la acción sea el creador de la tarea o el dueño del
+        // proyecto
+        boolean isOwner = step.getTask().getProject().getOwner().getIdUser().equals(idUser);
+        boolean isCreatedBy = step.getTask().getCreatedBy() != null
+                && step.getTask().getCreatedBy().getIdUser().equals(idUser);
+
+        if (!isOwner && !isCreatedBy) {
+            throw new RuntimeException("El usuario no tiene permisos para modificar pasos de esta tarea.");
+        }
 
         // Validar que la tarea esté activa
         if (!step.getTask().getActive()) {
@@ -213,6 +235,14 @@ public class StepService implements IStepService {
         // Validar que la tarea no esté completada
         if (step.getTask().getStatusTask() == StatusTask.COMPLETADA) {
             throw new RuntimeException("No se puede modificar un paso de una tarea completada.");
+        }
+
+        // Verificar nombre duplicado dentro de la tarea, excluyendo el paso actual
+        if (!step.getNameStep().equalsIgnoreCase(nameStep) &&
+                stepRepository.existsByNameStepIgnoreCaseAndTaskIdTaskAndActiveTrueAndIdStepNot(
+                        nameStep, step.getTask().getIdTask(), step.getIdStep())) {
+            throw new RuntimeException(
+                    "Ya existe un paso activo con el nombre '" + nameStep + "' en esta tarea.");
         }
 
         step.setNameStep(nameStep);

@@ -1,6 +1,9 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Controller;
 
+import java.time.LocalDate;
 import java.util.List;
+
+import org.springframework.format.annotation.DateTimeFormat;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestDTO;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestNextStatusDTO;
@@ -62,6 +65,41 @@ public class TaskController {
                 return ResponseEntity.ok(taskService.findTaskWithNameOrStatus(nameTask, statusTask));
         }
 
+        @Operation(
+                        summary = "Buscar tareas por rango de fechas",
+                        description = """
+                                        Filtra tareas activas por rango de fecha de inicio y/o de fin. Todos los parámetros son opcionales.
+
+                                        Reglas de exclusión:
+                                        - Si se usa `startDateFrom` o `startDateTo` → se excluyen tareas sin fecha de inicio (PENDIENTE).
+                                        - Si se usa `endDateFrom` o `endDateTo` → se excluyen tareas sin fecha de fin (no COMPLETADA).
+                                        - Sin parámetros → retorna todas las tareas activas.
+
+                                        Formato de fechas: `dd/MM/yyyy` (ej: `01/05/2026`)
+                                        """)
+        @ApiResponses({
+                        @ApiResponse(responseCode = "200", description = "Lista de tareas filtrada correctamente"),
+                        @ApiResponse(responseCode = "400",
+                                        description = "Rango inválido: la fecha 'desde' es posterior a la fecha 'hasta'",
+                                        content = @Content)
+        })
+        @GetMapping("/search-by-dates")
+        public ResponseEntity<List<TaskResponseDTO>> searchTasksByDateRange(
+                        @Parameter(description = "Fecha de inicio mínima (inclusive). Formato: dd/MM/yyyy", example = "01/05/2026")
+                        @RequestParam(required = false) @DateTimeFormat(pattern = "dd/MM/yyyy") LocalDate startDateFrom,
+
+                        @Parameter(description = "Fecha de inicio máxima (inclusive). Formato: dd/MM/yyyy", example = "31/05/2026")
+                        @RequestParam(required = false) @DateTimeFormat(pattern = "dd/MM/yyyy") LocalDate startDateTo,
+
+                        @Parameter(description = "Fecha de fin mínima (inclusive). Formato: dd/MM/yyyy", example = "01/05/2026")
+                        @RequestParam(required = false) @DateTimeFormat(pattern = "dd/MM/yyyy") LocalDate endDateFrom,
+
+                        @Parameter(description = "Fecha de fin máxima (inclusive). Formato: dd/MM/yyyy", example = "31/05/2026")
+                        @RequestParam(required = false) @DateTimeFormat(pattern = "dd/MM/yyyy") LocalDate endDateTo) {
+
+                return ResponseEntity.ok(
+                                taskService.findTaskByDateRange(startDateFrom, startDateTo, endDateFrom, endDateTo));
+        }
         // ==========================
         // --- CREAR TAREA ---
         // ==========================

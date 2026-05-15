@@ -22,6 +22,8 @@ INSERT INTO users (id_user, name, email, active) VALUES
 (3, 'Juan Pérez',    'juan@gmail.com',    TRUE),
 (4, 'Lucía Fernández','lucia@gmail.com',  TRUE),
 (5, 'Carlos Ruiz',   'carlos@gmail.com',  TRUE);
+(6, 'Ana Martinez',  'ana@gmail.com',   TRUE); 
+-- Agregamos un usuario activo para testear pero sin asignar a ningún proyecto
 
 -- ============================================================
 -- PROYECTOS (3 proyectos activos)

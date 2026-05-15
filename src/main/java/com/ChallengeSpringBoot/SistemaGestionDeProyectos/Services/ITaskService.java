@@ -1,5 +1,6 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestDTO;
@@ -24,4 +25,8 @@ public interface ITaskService {
     void deleteTask(Integer idTask, Integer idUser);
 
     List<TaskResponseDTO> findTaskWithNameOrStatus(String nameTask, StatusTask statusTask);
+
+    List<TaskResponseDTO> findTaskByDateRange(
+            LocalDate startDateFrom, LocalDate startDateTo,
+            LocalDate endDateFrom, LocalDate endDateTo);
 }

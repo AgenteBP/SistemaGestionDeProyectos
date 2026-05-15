@@ -11,7 +11,6 @@ import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.UserDTO.UserRespons
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Models.User;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.ProjectUserRepository;
-import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.TaskRepository;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.Repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -22,7 +21,6 @@ public class UserService implements IUserService {
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
-    private final TaskRepository taskRepository;
 
     /// Creacion de usuario
     @Override
@@ -154,18 +152,13 @@ public class UserService implements IUserService {
 
         if (projectRepository.existsByOwnerAndActiveTrue(user)) {
             throw new RuntimeException(
-                    "El usuario no se puede eliminar porque es propietario de un proyecto activo. Por favor, reasigne la propiedad del proyecto primero.");
+                    "El usuario no se puede eliminar porque es propietario de un proyecto activo.");
         }
 
         if (projectUserRepository.countByUserAndProjectActiveTrue(user) > 0) {
             throw new RuntimeException(
                     "El usuario no se puede eliminar porque esta asignado a un proyecto activo.");
         }
-
-        // if (taskRepository.existsByAssignedUserAndActiveTrue(user)) {
-        // throw new RuntimeException(
-        // "El usuario no se puede eliminar porque tiene tareas activas asignadas.");
-        // }
 
         user.setActive(false);
         userRepository.save(user);

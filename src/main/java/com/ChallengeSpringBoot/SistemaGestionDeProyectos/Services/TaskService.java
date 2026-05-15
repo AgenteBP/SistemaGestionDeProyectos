@@ -1,6 +1,7 @@
 package com.ChallengeSpringBoot.SistemaGestionDeProyectos.Services;
 
 import java.util.List;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import org.springframework.stereotype.Service;
 import com.ChallengeSpringBoot.SistemaGestionDeProyectos.DTO.TaskDTO.TaskRequestDTO;
@@ -63,6 +64,71 @@ public class TaskService implements ITaskService {
             tasks = tasks.stream()
                     .filter(t -> t.getStatusTask() == statusTask)
                     .toList();
+        }
+
+        return tasks.stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
+
+    @Override
+    public List<TaskResponseDTO> findTaskByDateRange(
+            LocalDate startDateFrom, LocalDate startDateTo,
+            LocalDate endDateFrom, LocalDate endDateTo) {
+
+        // Validar que "desde" no sea posterior a "hasta" en cada rango
+        if (startDateFrom != null && startDateTo != null && startDateFrom.isAfter(startDateTo)) {
+            throw new RuntimeException(
+                    "La fecha de inicio 'desde' no puede ser posterior a la fecha de inicio 'hasta'.");
+        }
+        if (endDateFrom != null && endDateTo != null && endDateFrom.isAfter(endDateTo)) {
+            throw new RuntimeException(
+                    "La fecha de fin 'desde' no puede ser posterior a la fecha de fin 'hasta'.");
+        }
+
+        List<Task> tasks = taskRepository.findByActiveTrue();
+
+        // --- Filtros de fecha de inicio ---
+        // Si se filtra por startDate, las tareas sin fecha (PENDIENTE) quedan excluidas
+        boolean filteringByStartDate = startDateFrom != null || startDateTo != null;
+        if (filteringByStartDate) {
+            tasks = tasks.stream()
+                    .filter(t -> t.getStartDate() != null)
+                    .toList();
+            if (startDateFrom != null) {
+                LocalDate from = startDateFrom;
+                tasks = tasks.stream()
+                        .filter(t -> !t.getStartDate().isBefore(from))
+                        .toList();
+            }
+            if (startDateTo != null) {
+                LocalDate to = startDateTo;
+                tasks = tasks.stream()
+                        .filter(t -> !t.getStartDate().isAfter(to))
+                        .toList();
+            }
+        }
+
+        // --- Filtros de fecha de fin ---
+        // Si se filtra por endDate, las tareas sin fecha de fin (no COMPLETADA) quedan
+        // excluidas
+        boolean filteringByEndDate = endDateFrom != null || endDateTo != null;
+        if (filteringByEndDate) {
+            tasks = tasks.stream()
+                    .filter(t -> t.getEndDate() != null)
+                    .toList();
+            if (endDateFrom != null) {
+                LocalDate from = endDateFrom;
+                tasks = tasks.stream()
+                        .filter(t -> !t.getEndDate().isBefore(from))
+                        .toList();
+            }
+            if (endDateTo != null) {
+                LocalDate to = endDateTo;
+                tasks = tasks.stream()
+                        .filter(t -> !t.getEndDate().isAfter(to))
+                        .toList();
+            }
         }
 
         return tasks.stream()
@@ -205,6 +271,16 @@ public class TaskService implements ITaskService {
 
         // Actualizar datos básicos
         if (taskRequestUpdateDTO.getNameTask() != null && !taskRequestUpdateDTO.getNameTask().trim().isEmpty()) {
+            // Verificar nombre duplicado en el mismo proyecto, excluyendo la tarea actual
+            if (!task.getNameTask().equalsIgnoreCase(taskRequestUpdateDTO.getNameTask()) &&
+                    taskRepository.existsByNameTaskIgnoreCaseAndProjectIdProjectAndActiveTrueAndIdTaskNot(
+                            taskRequestUpdateDTO.getNameTask(),
+                            task.getProject().getIdProject(),
+                            task.getIdTask())) {
+                throw new RuntimeException(
+                        "Ya existe una tarea activa con el nombre '" + taskRequestUpdateDTO.getNameTask()
+                                + "' en este proyecto.");
+            }
             task.setNameTask(taskRequestUpdateDTO.getNameTask());
         }
         task.setDescription(taskRequestUpdateDTO.getDescription());
@@ -317,6 +393,13 @@ public class TaskService implements ITaskService {
             throw new RuntimeException("El nombre de la tarea es obligatorio.");
         }
 
+        // Verificar nombre duplicado dentro del proyecto
+        if (taskRepository.existsByNameTaskIgnoreCaseAndProjectIdProjectAndActiveTrue(
+                taskRequestDTO.getNameTask(), taskRequestDTO.getIdProject())) {
+            throw new RuntimeException(
+                    "Ya existe una tarea activa con el nombre '" + taskRequestDTO.getNameTask()
+                            + "' en este proyecto.");
+        }
     }
 
     private void validateTaskUpdateRequest(TaskRequestDTO taskRequestDTO) {

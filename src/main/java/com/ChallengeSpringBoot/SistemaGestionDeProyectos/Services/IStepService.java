@@ -15,5 +15,5 @@ public interface IStepService {
 
     void deleteStep(Integer idStep, Integer idUser);
 
-    StepResponseDTO updateNameStep(Integer idStep, String nameStep);
+    StepResponseDTO updateNameStep(Integer idStep, String nameStep, Integer idUser);
 }

@@ -37,4 +37,7 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
 
         List<Task> findByActiveTrue();
 
+    boolean existsByNameTaskIgnoreCaseAndProjectIdProjectAndActiveTrue(String nameTask, Integer idProject);
+
+    boolean existsByNameTaskIgnoreCaseAndProjectIdProjectAndActiveTrueAndIdTaskNot(String nameTask, Integer idProject, Integer idTask);
 }
